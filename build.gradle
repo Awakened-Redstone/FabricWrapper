@@ -22,13 +22,13 @@ repositories {
 }
 
 dependencies {
-    //implementation 'com.google.jimfs:jimfs:1.2-fabric'
-    //implementation 'com.google.guava:guava:30.1-jre'
-    //implementation 'net.fabricmc:fabric-loader-sat4j:2.3.5.4'
-    //implementation 'org.apache.logging.log4j:log4j-api:2.8.1'
+    implementation 'org.apache.logging.log4j:log4j-api:2.8.1'
     implementation 'org.apache.logging.log4j:log4j-core:2.8.1'
     implementation 'org.jetbrains:annotations:19.0.0'
     implementation 'com.google.code.gson:gson:2.8.0'
+    implementation ('org.sharegov:mjson:1.4.1') {
+        transitive false
+    }
 }
 
 java {
