@@ -7,7 +7,7 @@
 			<PatternLayout>
 				<LoggerNamePatternSelector defaultPattern="%style{[%d{HH:mm:ss}]}{blue} %style{[%logger{1}]}{cyan} %highlight{[%t/%level]: %msg%n}{FATAL=red bright, ERROR=red, WARN=yellow, INFO=normal, DEBUG=normal, TRACE=normal}">
 					<!-- Dont show the logger name for minecraft classes-->
-					<PatternMatch key="net.minecraft.,com.mojang." pattern="%style{[%d{HH:mm:ss}]}{blue} %style{[Minecraft]}{cyan} %highlight{[%t/%level]: %msg%n}{FATAL=red bright, ERROR=red, WARN=normal, INFO=normal, DEBUG=normal, TRACE=normal}"/>
+					<PatternMatch key="net.minecraft.,com.mojang." pattern="%style{[%d{HH:mm:ss}]}{blue} %style{[Minecraft]}{cyan} %highlight{[%t/%level]: %msg%n}{FATAL=red bright, ERROR=red, WARN=yellow, INFO=normal, DEBUG=normal, TRACE=normal}"/>
 				</LoggerNamePatternSelector>
 			</PatternLayout>
 		</Console>

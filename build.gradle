@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'idea'
     id 'eclipse'
+    id "com.github.johnrengelman.shadow" version "6.1.0"
 }
 
 group 'org.jigsawlabs'
@@ -29,6 +30,7 @@ dependencies {
 
     //Logger
     implementation 'org.apache.logging.log4j:log4j-api:2.8.1'
+    implementation 'org.apache.logging.log4j:log4j-core:2.8.1'
     annotationProcessor 'org.apache.logging.log4j:log4j-core:2.8.1'
 
     //Annotations
@@ -42,8 +44,14 @@ dependencies {
 
     implementation 'net.minecrell:terminalconsoleappender:1.2.0'
     implementation 'com.mojang:authlib:2.1.28'
-    implementation 'com.mojang:patchy:1.1'
 }
+
+shadowJar {
+    archiveClassifier.set('')
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer)
+}
+
+build.dependsOn shadowJar
 
 java {
     // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task

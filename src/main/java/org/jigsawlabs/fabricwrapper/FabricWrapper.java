@@ -1,6 +1,7 @@
 package org.jigsawlabs.fabricwrapper;
 
 import com.google.gson.JsonObject;
+import jdk.internal.access.SharedSecrets;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jigsawlabs.fabricwrapper.notmycode.link.infra.jumploader.launch.PreLaunchDispatcher;
@@ -13,15 +14,13 @@ import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.loader.util.Arguments
 import java.io.*;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Properties;
+import java.nio.file.*;
+import java.security.Permission;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -102,6 +101,16 @@ public class FabricWrapper {
             Utils.downloadFile(new URL(LauncherMeta.getLauncherMeta().getVersion(gameVersion).getVersionMeta().downloads.get("server").url), serverJarTmp.toPath());
             Files.move(serverJarTmp.toPath(), serverJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
             loadUrls.add(serverJar.toURI().toURL());
+            {
+                try (InputStream in = FabricWrapper.class.getClassLoader().getResourceAsStream("log4j2.xml")) {
+                    File libsDir = new File(".", ".cache" + File.separator + "fabric-wrapper" + File.separator + "libraries");
+                    File file0 = new File(libsDir, "log4j2.xml");
+                    //noinspection ConstantConditions
+                    Files.copy(in, file0.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                    System.setProperty("log4j.configurationFile", file0.getAbsolutePath());
+                    loadUrls.add(file0.toURI().toURL());
+                }
+            }
 
             try {
                 ClasspathReplacer.replaceClasspath(loadUrls);
@@ -135,14 +144,11 @@ public class FabricWrapper {
 
             if (Thread.currentThread().getThreadGroup().activeCount() - preLaunchRunningThreads <= 0) {
                 LOGGER.warn("Minecraft shouldn't return from invoke() without spawning threads, loading is likely to have failed!");
+                System.exit(0);
             }
-
-
         } catch (IOException e) {
-            throw new RuntimeException("Failed to load latest versions", e);
+            throw new RuntimeException("Failed to load server.", e);
         }
-
-
     }
 
     protected static String parseVersion(String genericVersion) {
