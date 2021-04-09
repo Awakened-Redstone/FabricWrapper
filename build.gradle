@@ -19,16 +19,30 @@ repositories {
         name = 'Fabric'
         url = 'https://maven.fabricmc.net/'
     }
+    maven {
+        name = 'mojang'
+        url = 'https://libraries.minecraft.net/'
+    }
 }
 
 dependencies {
+
+    //Logger
     implementation 'org.apache.logging.log4j:log4j-api:2.8.1'
-    implementation 'org.apache.logging.log4j:log4j-core:2.8.1'
+    annotationProcessor 'org.apache.logging.log4j:log4j-core:2.8.1'
+
+    //Annotations
     implementation 'org.jetbrains:annotations:19.0.0'
+
+    //Json
     implementation 'com.google.code.gson:gson:2.8.0'
     implementation ('org.sharegov:mjson:1.4.1') {
         transitive false
     }
+
+    implementation 'net.minecrell:terminalconsoleappender:1.2.0'
+    implementation 'com.mojang:authlib:2.1.28'
+    implementation 'com.mojang:patchy:1.1'
 }
 
 java {

@@ -85,6 +85,13 @@ public final class Arguments {
 		return newArgs;
 	}
 
+	public List<String> toList() {
+		List<String> newArgs = new ArrayList<>();
+		values.keySet().stream().map(s -> Arrays.asList("--" + s, values.get(s))).forEach(newArgs::addAll);
+		newArgs.addAll(extraArgs);
+		return newArgs;
+	}
+
 	public String remove(String s) {
 		return values.remove(s);
 	}

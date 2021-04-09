@@ -24,6 +24,7 @@ import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.loader.util.UrlUtil;
 import java.io.*;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
+import java.text.MessageFormat;
 import java.util.*;
 import java.util.jar.Attributes;
 import java.util.jar.JarEntry;
@@ -36,10 +37,9 @@ import java.util.zip.ZipOutputStream;
 public class ServerInstaller {
 	private static final String servicesDir = "META-INF/services/";
 
-	public static void install(String loaderVersion, String gameVersion) throws IOException {
-		File file = new File(".");
-		File dir = file.getAbsoluteFile();
-		File libsDir = new File(file, ".cache" + File.separator + "fabric-wrapper" + File.separator + "libraries");
+	public static void install(File dir, String loaderVersion, String gameVersion, InstallerProgress progress) throws IOException {
+		progress.updateProgress(new MessageFormat(Utils.BUNDLE.getString("progress.installing.server")).format(new Object[]{String.format("%s(%s)", loaderVersion, gameVersion)}));
+		File libsDir = new File(".", ".cache" + File.separator + "fabric-wrapper" + File.separator + "libraries");
 		if (!libsDir.exists()) {
 			if (!libsDir.mkdirs()) {
 				throw new IOException("Could not create " + libsDir.getAbsolutePath() + "!");
@@ -51,6 +51,9 @@ public class ServerInstaller {
 			}
 		}
 
+		progress.updateProgress(Utils.BUNDLE.getString("progress.download.libraries"));
+
+
 		URL profileUrl = new URL(Reference.getMetaServerEndpoint(String.format("v2/versions/loader/%s/%s/server/json", gameVersion, loaderVersion)));
 		Json json = Json.read(Utils.readTextFile(profileUrl));
 
@@ -59,16 +62,20 @@ public class ServerInstaller {
 		for (Json libraryJson : json.at("libraries").asJsonList()) {
 			Library library = new Library(libraryJson);
 
+			progress.updateProgress(new MessageFormat(Utils.BUNDLE.getString("progress.download.library.entry")).format(new Object[]{library.name}));
 			File libraryFile = new File(libsDir, library.getFileName());
 			Utils.downloadFile(new URL(library.getURL()), libraryFile.toPath());
 			libraryFiles.add(libraryFile);
 		}
+
+		progress.updateProgress(Utils.BUNDLE.getString("progress.generating.launch.jar"));
 
 		//Generate launchJar to be used as fallback if needed.
 		File launchJar = new File(dir, "fabric-server-launch.jar");
 		String mainClass = json.at("mainClass").asString();
 		makeLaunchJar(launchJar, mainClass, libraryFiles);
 
+		progress.updateProgress(new MessageFormat(Utils.BUNDLE.getString("progress.done.loader")).format(new Object[]{launchJar.getName()}));
 		FabricWrapper.loadUrls.addAll(libraryFiles.stream().map(UrlUtil::asUrl).collect(Collectors.toList()));
 	}
 
