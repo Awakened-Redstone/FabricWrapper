@@ -17,6 +17,8 @@
 package org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.installer.server;
 
 import mjson.Json;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.jigsawlabs.fabricwrapper.FabricWrapper;
 import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.installer.util.*;
 import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.loader.util.UrlUtil;
@@ -36,6 +38,7 @@ import java.util.zip.ZipOutputStream;
 
 public class ServerInstaller {
     private static final String servicesDir = "META-INF/services/";
+    private static final Logger LOGGER = LogManager.getLogger("FabricWrapper");
 
     public static void install(File dir, String loaderVersion, String gameVersion, InstallerProgress progress) throws IOException {
         progress.updateProgress(new MessageFormat(Utils.BUNDLE.getString("progress.installing.server")).format(new Object[]{String.format("%s(%s)", loaderVersion, gameVersion)}));
@@ -138,7 +141,7 @@ public class ServerInstaller {
                         if (name.startsWith(servicesDir) && name.indexOf('/', servicesDir.length()) < 0) { // service definition file
                             parseServiceDefinition(name, jis, services);
                         } else if (!addedEntries.add(name)) {
-                            System.out.printf("duplicate file: %s%n", name);
+                            LOGGER.info("duplicate file: {}", name);
                         } else {
                             JarEntry newEntry = new JarEntry(name);
                             zipOutputStream.putNextEntry(newEntry);

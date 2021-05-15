@@ -2,7 +2,7 @@ plugins {
     id 'java'
     id 'idea'
     id 'eclipse'
-    id "com.github.johnrengelman.shadow" version "6.1.0"
+    id "com.github.johnrengelman.shadow" version "7.0.0"
 }
 
 group 'org.jigsawlabs'
@@ -15,7 +15,6 @@ targetCompatibility = 1.8
 
 repositories {
     mavenCentral()
-    jcenter()
     maven {
         name = 'Fabric'
         url = 'https://maven.fabricmc.net/'
@@ -27,7 +26,6 @@ repositories {
 }
 
 dependencies {
-
     //Logger
     implementation 'org.apache.logging.log4j:log4j-api:2.8.1'
     implementation 'org.apache.logging.log4j:log4j-core:2.8.1'
@@ -47,6 +45,9 @@ dependencies {
 }
 
 shadowJar {
+    minimize {
+        exclude(dependency('org.apache.logging.log4j:log4j-core:2.8.1'))
+    }
     archiveClassifier.set('')
     transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer)
 }
