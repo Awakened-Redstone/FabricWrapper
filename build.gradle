@@ -2,34 +2,58 @@ plugins {
     id 'java'
     id 'idea'
     id 'eclipse'
+    id "com.github.johnrengelman.shadow" version "7.0.0"
 }
 
 group 'org.jigsawlabs'
-version '0.1'
+version = project.version
 
 archivesBaseName = "fabric-wrapper"
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+sourceCompatibility = 1.11
+targetCompatibility = 1.11
 
 repositories {
     mavenCentral()
-    jcenter()
     maven {
         name = 'Fabric'
         url = 'https://maven.fabricmc.net/'
     }
+    maven {
+        name = 'mojang'
+        url = 'https://libraries.minecraft.net/'
+    }
 }
 
 dependencies {
-    //implementation 'com.google.jimfs:jimfs:1.2-fabric'
-    //implementation 'com.google.guava:guava:30.1-jre'
-    //implementation 'net.fabricmc:fabric-loader-sat4j:2.3.5.4'
-    //implementation 'org.apache.logging.log4j:log4j-api:2.8.1'
+    //Logger
+    implementation 'org.apache.logging.log4j:log4j-api:2.8.1'
     implementation 'org.apache.logging.log4j:log4j-core:2.8.1'
+    annotationProcessor 'org.apache.logging.log4j:log4j-core:2.8.1'
+
+    //Annotations
     implementation 'org.jetbrains:annotations:19.0.0'
+
+    //Json
     implementation 'com.google.code.gson:gson:2.8.0'
+    implementation('org.sharegov:mjson:1.4.1') {
+        transitive false
+    }
+
+    implementation 'net.minecrell:terminalconsoleappender:1.2.0'
+    implementation 'com.mojang:authlib:2.1.28'
 }
+
+shadowJar {
+    minimize {
+        exclude(dependency('org.apache.logging.log4j:.*:.*'))
+    }
+
+    archiveClassifier.set('')
+    transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer)
+}
+
+build.dependsOn shadowJar
 
 java {
     // Loom will automatically attach sourcesJar to a RemapSourcesJar task and to the "build" task
@@ -40,12 +64,13 @@ java {
 
 jar {
     manifest {
-        attributes (
-                'Main-Class': 'org.jigsawlabs.fabricwrapper.FabricWrapper'
+        attributes(
+                'Main-Class': 'org.jigsawlabs.fabricwrapper.WrapperPreLoad',
+                'Multi-Release': true
         )
     }
 
     from("LICENSE") {
-        rename { "${it}_${project.archivesBaseName}"}
+        rename { "${it}_${project.archivesBaseName}" }
     }
 }

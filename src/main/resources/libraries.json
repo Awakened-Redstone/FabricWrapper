@@ -1,0 +1,8 @@
+{
+  "libraries": [
+    {
+      "name": "net.minecrell:terminalconsoleappender:1.2.0",
+      "url": "https://repo.maven.apache.org/maven2/"
+    }
+  ]
+}
