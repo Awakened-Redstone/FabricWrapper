@@ -6,12 +6,12 @@ plugins {
 }
 
 group 'org.jigsawlabs'
-version '0.1'
+version = project.version
 
 archivesBaseName = "fabric-wrapper"
 
-sourceCompatibility = 1.8
-targetCompatibility = 1.8
+sourceCompatibility = 1.11
+targetCompatibility = 1.11
 
 repositories {
     mavenCentral()
@@ -36,7 +36,7 @@ dependencies {
 
     //Json
     implementation 'com.google.code.gson:gson:2.8.0'
-    implementation ('org.sharegov:mjson:1.4.1') {
+    implementation('org.sharegov:mjson:1.4.1') {
         transitive false
     }
 
@@ -46,8 +46,9 @@ dependencies {
 
 shadowJar {
     minimize {
-        exclude(dependency('org.apache.logging.log4j:log4j-core:2.8.1'))
+        exclude(dependency('org.apache.logging.log4j:.*:.*'))
     }
+
     archiveClassifier.set('')
     transform(com.github.jengelman.gradle.plugins.shadow.transformers.Log4j2PluginsCacheFileTransformer)
 }
@@ -63,12 +64,13 @@ java {
 
 jar {
     manifest {
-        attributes (
-                'Main-Class': 'org.jigsawlabs.fabricwrapper.FabricWrapper'
+        attributes(
+                'Main-Class': 'org.jigsawlabs.fabricwrapper.WrapperPreLoad',
+                'Multi-Release': true
         )
     }
 
     from("LICENSE") {
-        rename { "${it}_${project.archivesBaseName}"}
+        rename { "${it}_${project.archivesBaseName}" }
     }
 }

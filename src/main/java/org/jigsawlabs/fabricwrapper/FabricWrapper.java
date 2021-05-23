@@ -6,15 +6,21 @@ import com.mojang.util.UUIDTypeAdapter;
 import net.minecrell.terminalconsole.util.LoggerNamePatternSelector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.logging.log4j.util.PropertiesUtil;
 import org.jigsawlabs.fabricwrapper.notmycode.link.infra.jumploader.launch.PreLaunchDispatcher;
 import org.jigsawlabs.fabricwrapper.notmycode.link.infra.jumploader.launch.classpath.ClasspathReplacer;
 import org.jigsawlabs.fabricwrapper.notmycode.link.infra.jumploader.util.RequestUtils;
 import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.installer.server.ServerInstaller;
 import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.installer.util.*;
+import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.loader.launch.server.InjectingURLClassLoader;
 import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.loader.util.Arguments;
 import sun.misc.Unsafe;
 
 import java.io.*;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -54,11 +60,12 @@ public class FabricWrapper {
     );
 
     //Dummy code to make shadowJar minimize keep needed classes
-    @SuppressWarnings( "unused" )
+    @SuppressWarnings("unused")
     private void dummy() {
         Class<?> dummy0 = LoggerNamePatternSelector.class;
         Class<?> dummy1 = QueueLogAppender.class;
         Class<?> dummy2 = UUIDTypeAdapter.class;
+        Class<?> dummy3 = PropertiesUtil.class;
     }
 
     public static void disableWarning() {
@@ -75,8 +82,39 @@ public class FabricWrapper {
         }
     }
 
-    public static void main(String[] args) throws IOException {
-        disableWarning();
+    public static byte[] serialize(Object obj) throws IOException {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        ObjectOutputStream os = new ObjectOutputStream(out);
+        os.writeObject(obj);
+        return out.toByteArray();
+    }
+
+    public static void replaceLoader(URLClassLoader newLoader) {
+        try {
+            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
+            theUnsafe.setAccessible(true);
+            Unsafe u = (Unsafe) theUnsafe.get(null);
+
+            /*//noinspection rawtypes
+            Class cls = Class.forName("java.lang.ClassLoader");
+            Field scl = cls.getDeclaredField("scl");
+            u.putObjectVolatile(cls, u.staticFieldOffset(scl), newLoader);
+            Class<?> cls = Class.forName("java.lang.ClassLoader");
+            Method getDeclaredFields0 = cls.getClass().getDeclaredMethod("getDeclaredFields0", boolean.class);*/
+            Class<MethodHandles.Lookup> lookupClass = MethodHandles.Lookup.class;
+            MethodHandles.Lookup impl_lookup = (MethodHandles.Lookup) u.getObject(lookupClass, u.staticFieldOffset(lookupClass.getDeclaredField("IMPL_LOOKUP")));
+            MethodHandle setter = impl_lookup.findStaticSetter(ClassLoader.class, "scl", ClassLoader.class);
+            //byte[] bytes = serialize(Gson.class);
+            impl_lookup.findVirtual(ClassLoader.getSystemClassLoader().getClass(), "finalize", MethodType.methodType(void.class)).invoke(ClassLoader.getSystemClassLoader());
+            setter.invokeWithArguments(newLoader);
+            System.gc();
+        } catch (Throwable e) {
+            throw new RuntimeException("Failed to replace system ClassLoader", e);
+        }
+    }
+
+    public static void main(String[] args) throws Throwable {
+        //disableWarning();
         LOGGER.debug("Loading data.");
         GAME_VERSION_META = new MetaHandler(Reference.getMetaServerEndpoint("v2/versions/game"));
         LOADER_META = new MetaHandler(Reference.getMetaServerEndpoint("v2/versions/loader"));
@@ -134,6 +172,7 @@ public class FabricWrapper {
                 //noinspection ConstantConditions
                 Files.copy(in, file0.toPath(), StandardCopyOption.REPLACE_EXISTING);
                 System.setProperty("log4j.configurationFile", file0.getAbsolutePath());
+                Configurator.initialize("configurationFile", file0.getAbsolutePath());
                 loadUrls.add(file0.toURI().toURL());
             } catch (IOException exception) {
                 LOGGER.error("Failed to replace vanilla logger, loading will continue without replacing the logger", exception);
@@ -149,7 +188,8 @@ public class FabricWrapper {
             throw new RuntimeException("Failed to parse URL in replacement classpath", e);
         }
 
-        URLClassLoader newLoader = new URLClassLoader(loadUrls.toArray(new URL[0]), ClassLoader.getSystemClassLoader().getParent());
+        URLClassLoader newLoader = new InjectingURLClassLoader(loadUrls.toArray(new URL[]{}), FabricWrapper.class.getClassLoader());
+        replaceLoader(newLoader);
         Thread.currentThread().setContextClassLoader(newLoader);
 
         PreLaunchDispatcher.dispatch(newLoader);

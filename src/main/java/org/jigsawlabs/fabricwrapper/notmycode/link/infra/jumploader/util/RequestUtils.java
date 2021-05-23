@@ -1,6 +1,5 @@
 package org.jigsawlabs.fabricwrapper.notmycode.link.infra.jumploader.util;
 
-import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
 
@@ -26,7 +25,7 @@ public class RequestUtils {
 		}
 	}
 
-	public static int postJsonForResCode(URL requestUrl, JsonElement requestData) throws IOException {
+	/*public static int postJsonForResCode(URL requestUrl, JsonElement requestData) throws IOException {
 		HttpURLConnection conn = (HttpURLConnection) requestUrl.openConnection();
 		conn.setDoOutput(true);
 		conn.setRequestProperty("User-Agent", "FabricWrapper");
@@ -39,7 +38,7 @@ public class RequestUtils {
 		}
 
 		return conn.getResponseCode();
-	}
+	}*/
 
 	public static String getString(URL requestUrl) throws IOException {
 		URLConnection conn = requestUrl.openConnection();

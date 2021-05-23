@@ -44,7 +44,7 @@ public class FileSystemProviderAppender implements PreLaunchDispatcher.Handler {
 					return newList;
 				});
 			}
-		} catch (NoSuchFieldException | IllegalAccessException | ClassCastException e) {
+		} catch (Throwable e) {
 			LOGGER.warn("Failed to fix FileSystemProvider loading, jar-in-jar may not work", e);
 		}
 	}
