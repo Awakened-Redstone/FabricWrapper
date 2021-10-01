@@ -1,3 +1,20 @@
+/*
+ * Copyright (c) 2021 Awakened Redstone
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU Affero General Public License as
+ * published by the Free Software Foundation, either version 3 of the
+ * License, or (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU Affero General Public License for more details.
+ *
+ * You should have received a copy of the GNU Affero General Public License
+ * along with this program.  If not, see <https://www.gnu.org/licenses/>.
+ */
+
 package org.jigsawlabs.fabricwrapper;
 
 import com.google.gson.JsonObject;
@@ -6,15 +23,19 @@ import com.mojang.util.UUIDTypeAdapter;
 import net.minecrell.terminalconsole.util.LoggerNamePatternSelector;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.apache.logging.log4j.core.config.Configurator;
 import org.apache.logging.log4j.util.PropertiesUtil;
-import org.jigsawlabs.fabricwrapper.notmycode.link.infra.jumploader.launch.PreLaunchDispatcher;
-import org.jigsawlabs.fabricwrapper.notmycode.link.infra.jumploader.launch.classpath.ClasspathReplacer;
-import org.jigsawlabs.fabricwrapper.notmycode.link.infra.jumploader.util.RequestUtils;
-import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.installer.server.ServerInstaller;
-import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.installer.util.*;
-import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.loader.launch.server.InjectingURLClassLoader;
-import org.jigsawlabs.fabricwrapper.notmycode.net.fabricmc.loader.util.Arguments;
+import org.jigsawlabs.fabricwrapper.installer.LoaderVersion;
+import org.jigsawlabs.fabricwrapper.installer.server.MinecraftServerDownloader;
+import org.jigsawlabs.fabricwrapper.installer.server.ServerInstaller;
+import org.jigsawlabs.fabricwrapper.installer.util.InstallerProgress;
+import org.jigsawlabs.fabricwrapper.installer.util.MetaHandler;
+import org.jigsawlabs.fabricwrapper.installer.util.Reference;
+import org.jigsawlabs.fabricwrapper.installer.util.Utils;
+import org.jigsawlabs.fabricwrapper.jumploader.launch.PreLaunchDispatcher;
+import org.jigsawlabs.fabricwrapper.jumploader.launch.classpath.ClasspathReplacer;
+import org.jigsawlabs.fabricwrapper.jumploader.util.RequestUtils;
+import org.jigsawlabs.fabricwrapper.loader.launch.server.InjectingURLClassLoader;
+import org.jigsawlabs.fabricwrapper.loader.util.Arguments;
 import sun.misc.Unsafe;
 
 import java.io.*;
@@ -28,7 +49,8 @@ import java.net.URISyntaxException;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Files;
-import java.nio.file.StandardCopyOption;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -43,7 +65,7 @@ public class FabricWrapper {
     public static MetaHandler LOADER_META;
 
     public static String gameVersion;
-    public static String loaderVersion;
+    public static LoaderVersion loaderVersion;
 
     public static final List<URL> loadUrls = new ArrayList<>();
 
@@ -68,43 +90,15 @@ public class FabricWrapper {
         Class<?> dummy3 = PropertiesUtil.class;
     }
 
-    public static void disableWarning() {
-        try {
-            Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
-            theUnsafe.setAccessible(true);
-            Unsafe u = (Unsafe) theUnsafe.get(null);
-
-            //noinspection rawtypes
-            Class cls = Class.forName("jdk.internal.module.IllegalAccessLogger");
-            Field logger = cls.getDeclaredField("logger");
-            u.putObjectVolatile(cls, u.staticFieldOffset(logger), null);
-        } catch (Exception ignored) {
-        }
-    }
-
-    public static byte[] serialize(Object obj) throws IOException {
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        ObjectOutputStream os = new ObjectOutputStream(out);
-        os.writeObject(obj);
-        return out.toByteArray();
-    }
-
     public static void replaceLoader(URLClassLoader newLoader) {
         try {
             Field theUnsafe = Unsafe.class.getDeclaredField("theUnsafe");
             theUnsafe.setAccessible(true);
             Unsafe u = (Unsafe) theUnsafe.get(null);
 
-            /*//noinspection rawtypes
-            Class cls = Class.forName("java.lang.ClassLoader");
-            Field scl = cls.getDeclaredField("scl");
-            u.putObjectVolatile(cls, u.staticFieldOffset(scl), newLoader);
-            Class<?> cls = Class.forName("java.lang.ClassLoader");
-            Method getDeclaredFields0 = cls.getClass().getDeclaredMethod("getDeclaredFields0", boolean.class);*/
             Class<MethodHandles.Lookup> lookupClass = MethodHandles.Lookup.class;
             MethodHandles.Lookup impl_lookup = (MethodHandles.Lookup) u.getObject(lookupClass, u.staticFieldOffset(lookupClass.getDeclaredField("IMPL_LOOKUP")));
             MethodHandle setter = impl_lookup.findStaticSetter(ClassLoader.class, "scl", ClassLoader.class);
-            //byte[] bytes = serialize(Gson.class);
             impl_lookup.findVirtual(ClassLoader.getSystemClassLoader().getClass(), "finalize", MethodType.methodType(void.class)).invoke(ClassLoader.getSystemClassLoader());
             setter.invokeWithArguments(newLoader);
             System.gc();
@@ -114,7 +108,6 @@ public class FabricWrapper {
     }
 
     public static void main(String[] args) throws Throwable {
-        //disableWarning();
         LOGGER.debug("Loading data.");
         GAME_VERSION_META = new MetaHandler(Reference.getMetaServerEndpoint("v2/versions/game"));
         LOADER_META = new MetaHandler(Reference.getMetaServerEndpoint("v2/versions/loader"));
@@ -139,44 +132,26 @@ public class FabricWrapper {
         } catch (IOException e) {
             throw new RuntimeException("Failed to load Fabric Loader meta.", e);
         }
-        loaderVersion = LOADER_META.getLatestVersion(false).getVersion();
-        File file = new File(".");
-        if (!file.exists()) {
-            throw new FileNotFoundException("Server directory not found at " + file.getAbsolutePath());
+        loaderVersion = new LoaderVersion(LOADER_META.getLatestVersion(false).getVersion());
+        Path dir = Paths.get(".").toAbsolutePath().normalize();
+        if (!Files.isDirectory(dir)) {
+            throw new FileNotFoundException("Server directory not found at " + dir + " or not a directory");
         }
 
         try {
-            ServerInstaller.install(file.getAbsoluteFile(), loaderVersion, gameVersion, InstallerProgress.CONSOLE);
+            ServerInstaller.install(dir, loaderVersion, gameVersion, InstallerProgress.CONSOLE);
+            InstallerProgress.CONSOLE.updateProgress(Utils.BUNDLE.getString("progress.done.loader"));
         } catch (IOException e) {
             throw new RuntimeException("Failed to install Fabric Loader", e);
         }
         try {
-            File serverJar = new File(file, "server.jar");
-            File serverJarTmp = new File(file, "server.jar.tmp");
-            Files.deleteIfExists(serverJar.toPath());
             InstallerProgress.CONSOLE.updateProgress(Utils.BUNDLE.getString("progress.download.minecraft"));
-            Utils.downloadFile(new URL(LauncherMeta.getLauncherMeta().getVersion(gameVersion).getVersionMeta().downloads.get("server").url), serverJarTmp.toPath());
-            Files.move(serverJarTmp.toPath(), serverJar.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            Path serverJar = dir.resolve("server.jar");
+            MinecraftServerDownloader downloader = new MinecraftServerDownloader(gameVersion);
+            downloader.downloadMinecraftServer(serverJar);
             InstallerProgress.CONSOLE.updateProgress(Utils.BUNDLE.getString("progress.done.server"));
-            InstallerProgress.CONSOLE.updateProgress("Preparing for server start");
-            loadUrls.add(serverJar.toURI().toURL());
         } catch (IOException e) {
             throw new RuntimeException("Failed to install Minecraft Server", e);
-        }
-
-        if (Boolean.parseBoolean(properties.getProperty("replaceVanillaLogger"))) {
-            LOGGER.debug("Adding custom log4j2 to classpath.");
-            try (InputStream in = FabricWrapper.class.getClassLoader().getResourceAsStream("log4j2.xml")) {
-                File libsDir = new File(".", ".cache" + File.separator + "fabric-wrapper" + File.separator + "libraries");
-                File file0 = new File(libsDir, "log4j2.xml");
-                //noinspection ConstantConditions
-                Files.copy(in, file0.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                System.setProperty("log4j.configurationFile", file0.getAbsolutePath());
-                Configurator.initialize("configurationFile", file0.getAbsolutePath());
-                loadUrls.add(file0.toURI().toURL());
-            } catch (IOException exception) {
-                LOGGER.error("Failed to replace vanilla logger, loading will continue without replacing the logger", exception);
-            }
         }
 
         loadUrls.add(FabricWrapper.class.getProtectionDomain().getCodeSource().getLocation());
@@ -194,7 +169,7 @@ public class FabricWrapper {
 
         PreLaunchDispatcher.dispatch(newLoader);
 
-        String loaderJsonPath = String.format("v2/versions/loader/%s/%s", gameVersion, loaderVersion);
+        String loaderJsonPath = String.format("v2/versions/loader/%s/%s", gameVersion, loaderVersion.name);
         String loaderJsonUrl = Reference.getMetaServerEndpoint(loaderJsonPath);
         JsonObject loaderJson = RequestUtils.getJson(loaderJsonUrl).getAsJsonObject();
         String mainClassPath = loaderJson.getAsJsonObject("launcherMeta").getAsJsonObject("mainClass").get("server").getAsString();
@@ -220,8 +195,7 @@ public class FabricWrapper {
 
     private static void loadProperties() {
         Map<String, String> defaultProperties = new HashMap<>();
-        defaultProperties.put("gameVersion", "latest/stable");
-        defaultProperties.put("replaceVanillaLogger", "false");
+        defaultProperties.put("gameVersion", "latest/release");
 
         try {
             File propertiesFile = new File("fabric-wrapper.properties");
