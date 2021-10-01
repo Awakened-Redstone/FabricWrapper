@@ -149,6 +149,7 @@ public class FabricWrapper {
             Path serverJar = dir.resolve("server.jar");
             MinecraftServerDownloader downloader = new MinecraftServerDownloader(gameVersion);
             downloader.downloadMinecraftServer(serverJar);
+            loadUrls.add(serverJar.toUri().toURL());
             InstallerProgress.CONSOLE.updateProgress(Utils.BUNDLE.getString("progress.done.server"));
         } catch (IOException e) {
             throw new RuntimeException("Failed to install Minecraft Server", e);

@@ -19,11 +19,14 @@ package org.jigsawlabs.fabricwrapper.installer.server;
 import mjson.Json;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jigsawlabs.fabricwrapper.FabricWrapper;
 import org.jigsawlabs.fabricwrapper.installer.LoaderVersion;
 import org.jigsawlabs.fabricwrapper.installer.util.InstallerProgress;
 import org.jigsawlabs.fabricwrapper.installer.util.Library;
 import org.jigsawlabs.fabricwrapper.installer.util.Reference;
 import org.jigsawlabs.fabricwrapper.installer.util.Utils;
+import org.jigsawlabs.fabricwrapper.loader.util.UrlConversionException;
+import org.jigsawlabs.fabricwrapper.loader.util.UrlUtil;
 
 import java.io.*;
 import java.net.URL;
@@ -35,6 +38,7 @@ import java.text.MessageFormat;
 import java.util.*;
 import java.util.jar.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipOutputStream;
@@ -120,6 +124,13 @@ public class ServerInstaller {
         progress.updateProgress(Utils.BUNDLE.getString("progress.generating.launch.jar"));
 
         makeLaunchJar(launchJar, mainClassMeta, mainClassManifest, libraryFiles, progress);
+        FabricWrapper.loadUrls.addAll(libraryFiles.stream().map(v -> {
+            try {
+                return UrlUtil.asUrl(v);
+            } catch (UrlConversionException e) {
+                throw new RuntimeException(e);
+            }
+        }).collect(Collectors.toList()));
     }
 
     private static void makeLaunchJar(Path file, String launchMainClass, String jarMainClass, List<Path> libraryFiles, InstallerProgress progress) throws IOException {
