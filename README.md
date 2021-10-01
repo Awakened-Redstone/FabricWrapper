@@ -1,4 +1,4 @@
-# FabricWrapper
+# FabricWrapper [![CodeQL](https://github.com/Awakened-Redstone/FabricWrapper/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Awakened-Redstone/FabricWrapper/actions/workflows/codeql-analysis.yml)
 Installs a Minecraft server on specified game version with Fabric loader installed
 
 ### The wrapper NOT a mod, it is a pre loader, you need to run it instead of `server.jar` or `fabric-server-launch.jar`
