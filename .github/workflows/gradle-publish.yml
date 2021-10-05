@@ -4,7 +4,8 @@
 name: Gradle Package
 
 on:
-  workflow_dispatch
+  workflow_dispatch:
+    branches: [ master ]
   release:
     types: [created]
 
